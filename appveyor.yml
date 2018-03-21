@@ -22,3 +22,14 @@ build: off
 version: '{build}'
 shallow_clone: true
 clone_depth: 1
+
+
+artifacts:
+
+  - path: '**\*.exe'
+
+deploy:
+  - provider: GitHub
+    artifact: /.*\.exe/
+    draft: true
+    prerelease: false
