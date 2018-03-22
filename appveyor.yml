@@ -1,12 +1,6 @@
 platform:
   - x64
 
-branches:
-  only:
-    - master
-  except:
-    - gh-pages
-
 cache:
   - node_modules
 
