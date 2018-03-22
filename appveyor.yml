@@ -1,12 +1,16 @@
 platform:
   - x64
 
+branches:
+  only:
+    - master
+
 cache:
   - node_modules
 
-environment:
-  GH_TOKEN:
-    secure: X4+nWJ2UjDsok24dyGMoUZwDjrPzDFYxxbCcp9k7XZtctGgHBH6n8vH1id2gVQal
+# BUILD
+
+image: Visual Studio 2015
 
 install:
   - ps: Install-Product node 8 x64
@@ -27,8 +31,8 @@ artifacts:
 
   - path: 'dist\*.exe'
 
-deploy:
-  - provider: GitHub
-    artifact: /dist\\.*\.exe/
-    draft: true
-    prerelease: false
+# deploy:
+#   - provider: GitHub
+#     artifact: /dist\\.*\.exe/
+#     draft: true
+#     prerelease: false
