@@ -1,8 +1,16 @@
 version: 2
+
 references:
   container_config: &container_config
     docker:
       - image: electronuserland/builder:wine-chrome
+        environment:
+          TARGET_ARCH: x64
+    working_directory: ~/neon-wallet
+
+  win_config: &win_config
+    docker:
+      - image: electronuserland/builder:wine
         environment:
           TARGET_ARCH: x64
     working_directory: ~/neon-wallet
@@ -20,7 +28,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: neon-wallet-{{ checksum "yarn.lock" }}
+        key: neon-wallet-{{ checksum "yarn.lock" }}
       - run: apt-get -y update
       - run: apt-get -y install libusb-1.0-0-dev icnsutils graphicsmagick libudev-dev
       - run: yarn
@@ -28,37 +36,74 @@ jobs:
       - run: yarn flow
       - run: yarn dist
       - save_cache:
-          key: neon-wallet-{{ checksum "yarn.lock" }}
-          paths:
-            - ~/.yarn-cache
-            - ./node_modules
+        key: neon-wallet-{{ checksum "yarn.lock" }}
+        paths:
+          - ~/.yarn-cache
+          - ./node_modules
       - persist_to_workspace:
-          root: *workspace_root
-          paths:
-            - dist/*
+        root: *workspace_root
+        paths:
+          - dist/*
+
   test:
     <<: *container_config
     steps:
       - checkout
       - restore_cache:
-          key: neon-wallet-{{ checksum "yarn.lock" }}
+        key: neon-wallet-{{ checksum "yarn.lock" }}
       - run: apt-get -y update
       - run: apt-get -y install libusb-1.0-0-dev graphicsmagick libudev-dev
       - run: yarn test-ci
       - run:
-          name: Running Xvfb for e2e test
-          command: Xvfb -ac :99 -screen 0 1280x1024x16
-          background: true
+        name: Running Xvfb for e2e test
+        command: Xvfb -ac :99 -screen 0 1280x1024x16
+        background: true
       - run:
-          name: Run e2e tests
-          command: |
-            yarn
-            yarn assets
-            export DISPLAY=:99
-            yarn test:e2e
+        name: Run e2e tests
+        command: |
+          yarn
+          yarn assets
+          export DISPLAY=:99
+          yarn test:e2e
     store_artifacts:
       - path: artifacts/
       - destination: yarnpkg
+
+  deploy-win64:
+    <<: *win_config
+    steps:
+      - checkout
+      - restore_cache:
+        key: neon-wallet-{{ checksum "yarn.lock" }}
+      - run: apt-get -y update
+      - run: apt-get -y install libusb-1.0-0-dev icnsutils graphicsmagick libudev-dev
+      - run: apt-get install --no-install-recommends -y gcc-multilib g++-multilib
+      - run: yarn
+      - run: yarn lint
+      - run: yarn flow
+      - run: yarn assets
+      - run: yarn build -w --x64
+      - store_artifacts:
+        path: dist
+        destination: build/win64
+
+  deploy-win64:
+    <<: *win_config
+    steps:
+      - checkout
+      - restore_cache:
+        key: neon-wallet-{{ checksum "yarn.lock" }}
+      - run: apt-get -y update
+      - run: apt-get -y install libusb-1.0-0-dev icnsutils graphicsmagick libudev-dev
+      - run: apt-get install --no-install-recommends -y gcc-multilib g++-multilib
+      - run: yarn
+      - run: yarn lint
+      - run: yarn flow
+      - run: yarn assets
+      - run: yarn build -w --ia32
+      - store_artifacts:
+        path: dist
+        destination: build/win32
 
 workflows:
   version: 2
@@ -66,5 +111,11 @@ workflows:
     jobs:
       - build
       - test:
-          requires:
-            - build
+        requires:
+          - build
+      - deploy-win64:
+        requires:
+          - test
+      - deploy-win32:
+        requires:
+          - test
